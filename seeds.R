@@ -112,13 +112,15 @@ x2 <- c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1,
 out <- seeds(n, N, x1, x2)
 out$chain <- out$chain[-(1:1000),]
 
+ylabs <- c('alpha0', 'alpha1', 'alpha2',
+           'alpha12', 'sigma2')
 par(mfrow = c(5, 2), mar = c(4, 5, 0.5, 0.5))
 for (j in 1:4){
-  plot(out$chain[,j], type = "l", main = "")
+  plot(out$chain[,j], type = "l", main = "",ylab=xlabs[j])
   plot(density(out$chain[,j]), type = "l", main = "")
 }
 
-plot(out$chain[,26], type = "l", main = "")
+plot(out$chain[,26], type = "l", main = "",ylab=xlabs[5])
 plot(density(out$chain[,26]), type = "l", main = "")
 
 
@@ -127,3 +129,44 @@ moy_alpha1 <- mean(out$chain[,2])
 moy_alpha2 <- mean(out$chain[,3])
 moy_alpha12 <- mean(out$chain[,4])
 moy_sigma <- sqrt(mean(out$chain[,26]))
+moy_b <- colMeans(out$chain[,5:25])
+
+medians <- apply(out$chain,2,median)
+alpha0_hat <- medians[1]
+alpha1_hat <- medians[2]
+alpha2_hat <- medians[3]
+alpha12_hat <- medians[4]
+sigma_hat <- medians[26]
+b_hat <- medians[5:25]
+
+#Calcul de la probabilite: Méthode 1
+
+prob = pi(x1, x2, alpha0_hat, alpha1_hat,
+          alpha2_hat, alpha12_hat, b_hat)
+rbind(predicted = N * prob, observed = n)
+
+#Calcul de la probabilite via la loi a predictive
+
+simu <- matrix(NA,nrow(out$chain),I)
+for (i in 1:nrow(out$chain)){
+  chain <- out$chain[i,]
+  bi <- chain[5:25]
+  proba <- as.numeric(pi(x1, x2, chain[1], chain[2],
+              chain[3], chain[4], bi))
+  
+  simu[i,] <- rbinom(I, N, proba)
+}
+
+layout.matrix <- matrix(c(1:5,0,6:16,0, 17:21,0),
+                        nrow = 4, ncol = 6,byrow=TRUE)
+##on prend ce layout parce que chaque ligne est un groupe different
+## par rapport au type de graine et le type de racine
+layout(mat = layout.matrix) 
+
+par( mar = c(2, 3, 0.5, 0.5))
+for (j in 1:21){
+  plot(table(simu[,j]) / nrow(simu), xlim = c(0, 100),
+       xlab = "Number of germinated seeds", ylab = "Probabilite")
+}
+
+
